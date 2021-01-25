@@ -72,7 +72,7 @@ class GeometricTnf(object):
             return sampling_grid
 
         # sample transformed image
-        warped_image_batch = F.grid_sample(image_batch, sampling_grid)
+        warped_image_batch = F.grid_sample(image_batch, sampling_grid, align_corners=True)
 
         if return_sampling_grid and return_warped_image:
             return (warped_image_batch,sampling_grid)
@@ -115,7 +115,7 @@ class GeometricTnfAffine(object):
             return sampling_grid
 
         # sample transformed image
-        warped_image_batch = F.grid_sample(image_batch, sampling_grid)
+        warped_image_batch = F.grid_sample(image_batch, sampling_grid, align_corners=True)
 
         if return_sampling_grid and return_warped_image:
             return (warped_image_batch,sampling_grid)
@@ -139,7 +139,7 @@ class AffineGridGen(Module):
         theta = theta.contiguous()
         batch_size = theta.size()[0]
         out_size = torch.Size((batch_size,self.out_ch,self.out_h,self.out_w))
-        return F.affine_grid(theta, out_size)
+        return F.affine_grid(theta, out_size, align_corners=True)
 
 class AffineGridGenV2(Module):
     def __init__(self, out_h=240, out_w=240, use_cuda=True):

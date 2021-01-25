@@ -15,14 +15,14 @@ from utils.transforms import *
 import torchvision.transforms as transforms
 
 import scipy.io as sio
-import scipy.misc
+import cv2
 
 
 # get the video frames
 # two patches in the future frame, one is center, the other is one of the 8 patches around
 
 class DavisSet(data.Dataset):
-    def __init__(self, params, is_train=True):
+    def __init__(self, params, is_train=True, task="actions_present", mode="val"):
 
         self.filelist = params['filelist']
         self.batchSize = params['batchSize']
@@ -40,7 +40,7 @@ class DavisSet(data.Dataset):
         # self.gridSize = params['gridSize']
 
         self.is_train = is_train
-
+        """
         f = open(self.filelist, 'r')
         self.jpgfiles = []
         self.lblfiles = []
@@ -54,6 +54,33 @@ class DavisSet(data.Dataset):
             self.lblfiles.append(lblfile)
 
         f.close()
+        """
+
+        # splits
+        if mode == 'train':
+            path_split = "lists/{}/train_subsetT.txt"
+        elif mode == 'val':
+            path_split = "lists/{}/train_subsetV.txt"
+        elif mode == 'test':
+            path_split = "lists/{}/val.txt"
+        else: raise ValueError('wrong mode')
+
+        path_split = path_split.format(task)
+
+        self.jpgfiles = []
+        self.fnums = []
+        self.lblfiles = []
+        white_list = [12]
+        with open(os.path.join(self.filelist, path_split),"r") as f: 
+            for s in f.readlines(): 
+                path = s.split(' ')[0].split('.')[0]
+                if int(path.split('_')[-1]) not in white_list:
+                    continue
+                print("Taking video {}".format(path))
+                path = os.path.join(self.filelist, 'frame/videos', path)
+                self.jpgfiles.append(path)
+                self.lblfiles.append(path)
+                self.fnums.append(300)
 
     def cropimg(self, img, offset_x, offset_y, cropsize):
 
@@ -75,19 +102,23 @@ class DavisSet(data.Dataset):
         patches = []
         target_imgs = []
 
-        frame_num = len(os.listdir(folder_path)) + self.videoLen
+        frame_num = 300 + self.videoLen#len(os.listdir(folder_path)) + self.videoLen
 
         mean=[0.485, 0.456, 0.406]
         std=[0.229, 0.224, 0.225]
 
         for i in range(frame_num):
             if i < self.videoLen:
-                img_path = folder_path + "{:05d}.jpg".format(0)
-                lbl_path = label_path + "{:05d}.png".format(0)
+                #img_path = folder_path + "{:05d}.jpg".format(0)
+                img_path = os.path.join(folder_path, 'image_%05d.jpg' % (1))
+                #lbl_path = label_path + "{:05d}.png".format(0)
+                lbl_path = os.path.join(folder_path, 'label_%05d.png' % (1))
             else:
-                img_path = folder_path + "{:05d}.jpg".format(i - self.videoLen)
-                lbl_path = label_path + "{:05d}.png".format(i - self.videoLen)
-
+                #img_path = folder_path + "{:05d}.jpg".format(i - self.videoLen)
+                img_path = os.path.join(folder_path, 'image_%05d.jpg' % (i - self.videoLen + 1))
+                #lbl_path = label_path + "{:05d}.png".format(i - self.videoLen)
+                lbl_path = os.path.join(folder_path, 'label_%05d.png' % (i - self.videoLen + 1))
+            lbl_path = os.path.join(folder_path, 'label_%05d.png' % (1))
             img = load_image(img_path)  # CxHxW
             ht, wd = img.size(1), img.size(2)
             newh, neww = ht, wd
@@ -110,10 +141,10 @@ class DavisSet(data.Dataset):
 
             img = color_normalize(img, mean, std)
             imgs[i] = img
-            lblimg  = scipy.misc.imread(lbl_path)
-            lblimg  = scipy.misc.imresize( lblimg, (newh, neww), 'nearest' )
+            lblimg  = cv2.imread(lbl_path)
+            lblimg  = cv2.resize(lblimg, (neww, newh), cv2.INTER_NEAREST)
 
-            lbls.append(lblimg.copy())
+            lbls.append(255*(lblimg.copy() != 0).astype(np.int32))
 
         gridx = 0
         gridy = 0

@@ -25,13 +25,13 @@ import sys
 
 class CycleTime(nn.Module):
 
-    def __init__(self, class_num=8, dim_in=2048, trans_param_num=3, detach_network=False, pretrained=True, temporal_out=4, T=None, hist=1):
+    def __init__(self, class_num=8, dim_in=512, trans_param_num=3, detach_network=False, pretrained=True, temporal_out=4, T=None, hist=1):
         super(CycleTime, self).__init__()
 
         dim = 512
         print(pretrained)
 
-        resnet = resnet_res4s1.resnet50(pretrained=pretrained)
+        resnet = resnet_res4s1.resnet18(pretrained=pretrained)
         self.encoderVideo = inflated_resnet.InflatedResNet(copy.deepcopy(resnet))
         self.detach_network = detach_network
         self.hist = hist
@@ -40,7 +40,7 @@ class CycleTime(nn.Module):
         self.T = self.div_num**-.5 if T is None else T
         print('self.T:', self.T)
 
-        self.afterconv1 = nn.Conv3d(1024, 512, kernel_size=1, bias=False)
+        self.afterconv1 = nn.Conv3d(dim_in // 2, dim_in // 4, kernel_size=1, bias=False)
 
         self.spatial_out1 = 30
         self.spatial_out2 = 10

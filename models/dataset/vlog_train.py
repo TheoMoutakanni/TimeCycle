@@ -21,7 +21,7 @@ from geotnf.transformation import GeometricTnf
 import torchvision.transforms as transforms
 
 class VlogSet(data.Dataset):
-    def __init__(self, params, is_train=True, frame_gap=1, augment=['crop', 'flip', 'frame_gap']):
+    def __init__(self, params, is_train=True, frame_gap=1, augment=['crop', 'flip', 'frame_gap'], task="actions_present", mode="train"):
 
         self.filelist = params['filelist']
         self.batchSize = params['batchSize']
@@ -40,7 +40,7 @@ class VlogSet(data.Dataset):
         self.frame_gap = frame_gap
 
         self.augment = augment
-
+        """
         f = open(self.filelist, 'r')
         self.jpgfiles = []
         self.fnums = []
@@ -54,7 +54,32 @@ class VlogSet(data.Dataset):
             self.fnums.append(fnum)
 
         f.close()
+        """
         self.geometricTnf = GeometricTnf('affine', out_h=params['cropSize2'], out_w=params['cropSize2'], use_cuda = False)
+
+        # splits
+        if mode == 'train':
+            path_split = "lists/{}/train_subsetT.txt"
+        elif mode == 'val':
+            path_split = "lists/{}/train_subsetV.txt"
+        elif mode == 'test':
+            path_split = "lists/{}/val.txt"
+        else: raise ValueError('wrong mode')
+
+        path_split = path_split.format(task)
+
+        self.jpgfiles = []
+        self.fnums = []
+        black_list = [75, 76, 385, 4798, 4803, 4820, 6531, 6532, 6536]
+        with open(os.path.join(self.filelist, path_split),"r") as f: 
+            for s in f.readlines(): 
+                path = s.split(' ')[0].split('.')[0]
+                if int(path.split('_')[-1]) in black_list:
+                    print("Skipping video {}".format(path))
+                    continue
+                path = os.path.join(self.filelist, 'frame/videos', path)
+                self.jpgfiles.append(path)
+                self.fnums.append(300)
 
     def cropimg(self, img, offset_x, offset_y, cropsize):
 
@@ -127,8 +152,8 @@ class VlogSet(data.Dataset):
             # img_path = folder_path + "{:02d}.jpg".format(nowid)
             # specialized for fouhey format
             newid = nowid + 1
-            img_path = folder_path + "{:06d}.jpg".format(newid)
-
+            #img_path = folder_path + "{:06d}.jpg".format(newid)
+            img_path = os.path.join(folder_path, 'image_%05d.jpg' % (newid+1))
             img = load_image(img_path)  # CxHxW
 
             ht, wd = img.size(1), img.size(2)
@@ -170,7 +195,8 @@ class VlogSet(data.Dataset):
             newid = int(future_idx + 1 + i * frame_gap)
             if newid > fnum:
                 newid = fnum
-            img_path = folder_path + "{:06d}.jpg".format(newid)
+            #img_path = folder_path + "{:06d}.jpg".format(newid)
+            img_path = os.path.join(folder_path, 'image_%05d.jpg' % (newid+1))
 
             img = load_image(img_path)  # CxHxW
             ht, wd = img.size(1), img.size(2)

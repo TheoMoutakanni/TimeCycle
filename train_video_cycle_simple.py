@@ -19,7 +19,7 @@ def info(type, value, tb):
         # pdb.pm() # deprecated
         pdb.post_mortem(tb) # more "modern"
 
-sys.excepthook = info
+#sys.excepthook = info
 
 import argparse
 import os
@@ -47,7 +47,9 @@ from utils import Logger, AverageMeter, mkdir_p, savefig
 import models.dataset.vlog_train as vlog
 
 params = {}
-params['filelist'] = '/nfs.yoda/xiaolonw/vlog/vlog_frames_12fps.txt'
+params['filelist'] = '/mnt/285EDDF95EDDC02C/Users/Public/Documents/VideoDatasets/CATER/max2actions'
+params['task'] = 'actions_present'
+params['mode'] = 'train'
 params['imgSize'] = 256
 params['imgSize2'] = 320
 params['cropSize'] = 240
@@ -80,7 +82,7 @@ parser.add_argument('--momentum', default=0.5, type=float, metavar='M',
 parser.add_argument('--weight-decay', '--wd', default=0.0, type=float,
                     metavar='W', help='weight decay (default: 1e-4)')
 # Checkpoints
-parser.add_argument('-c', '--checkpoint', default='/scratch/xiaolonw/pytorch_checkpoints/CycleTime/', type=str, metavar='PATH',
+parser.add_argument('-c', '--checkpoint', default='pytorch_checkpoints/release_model_simple', type=str, metavar='PATH',
                     help='path to save checkpoint (default: checkpoint)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
@@ -91,12 +93,12 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
 parser.add_argument('--pretrained', default='', type=str, metavar='PATH',
                     help='use pre-trained model')
 #Device options
-parser.add_argument('--gpu-id', default='0,1,2,3', type=str,
+parser.add_argument('--gpu-id', default='0', type=str,
                     help='id(s) for CUDA_VISIBLE_DEVICES')
 parser.add_argument('--predDistance', default=4, type=int,
                     help='predict how many frames away')
 parser.add_argument('--seperate2d', type=int, default=0, help='manual seed')
-parser.add_argument('--batchSize', default=36, type=int,
+parser.add_argument('-bs', '--batchSize', default=36, type=int,
                     help='batchSize')
 parser.add_argument('--T', default=512**-.5, type=float,
                     help='temperature')
@@ -221,7 +223,7 @@ def main():
         logger.set_names(['Learning Rate', 'Train Loss', 'Theta Loss', 'Theta Skip Loss'])
 
     train_loader = torch.utils.data.DataLoader(
-        vlog.VlogSet(params, is_train=True, frame_gap=args.frame_gap),
+        vlog.VlogSet(params, is_train=True, frame_gap=args.frame_gap, mode=params['mode'], task=params['task']),
         batch_size=params['batchSize'], shuffle=True,
         num_workers=args.workers, pin_memory=True)
 
@@ -318,6 +320,7 @@ def train(train_loader, model, criterion, optimizer, epoch, use_cuda, args):
         outstr += add_loss_to_str('loss_targ_theta', loss_targ_theta)
         outstr += add_loss_to_str('loss_targ_theta_skip', loss_targ_theta_skip)
 
+        
         loss.backward()
 
         torch.nn.utils.clip_grad_norm(model.parameters(), 10.0)

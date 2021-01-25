@@ -67,10 +67,10 @@ class Bottleneck3d(torch.nn.Module):
 
         self.bn2 = inflate.inflate_batch_norm(bottleneck2d.bn2)
 
-        self.conv3 = inflate.inflate_conv(
-            bottleneck2d.conv3, time_dim=1, center=True)
+        #self.conv3 = inflate.inflate_conv(
+        #    bottleneck2d.conv3, time_dim=1, center=True)
 
-        self.bn3 = inflate.inflate_batch_norm(bottleneck2d.bn3)
+        #self.bn3 = inflate.inflate_batch_norm(bottleneck2d.bn3)
 
         self.relu = torch.nn.ReLU(inplace=True)
 
@@ -90,10 +90,10 @@ class Bottleneck3d(torch.nn.Module):
 
         out = self.conv2(out)
         out = self.bn2(out)
-        out = self.relu(out)
+        #out = self.relu(out)
 
-        out = self.conv3(out)
-        out = self.bn3(out)
+        #out = self.conv3(out)
+        #out = self.bn3(out)
 
         if self.downsample is not None:
             residual = self.downsample(x)

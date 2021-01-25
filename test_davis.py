@@ -14,7 +14,7 @@ import imageio
 
 import numpy as np
 import pickle
-import scipy.misc
+import cv2
 
 import torch
 import torch.nn as nn
@@ -37,7 +37,9 @@ from torch.autograd import Variable
 
 
 params = {}
-params['filelist'] = '/nfs.yoda/xiaolonw/davis/DAVIS/vallist.txt'
+params['filelist'] = '/mnt/285EDDF95EDDC02C/Users/Public/Documents/VideoDatasets/CATER/max2actions'
+params['task'] = 'actions_present'
+params['mode'] = 'train'
 # params['batchSize'] = 24
 params['imgSize'] = 320
 params['cropSize'] = 320
@@ -79,7 +81,7 @@ parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
 parser.add_argument('--weight-decay', '--wd', default=1e-4, type=float,
                     metavar='W', help='weight decay (default: 1e-4)')
 # Checkpoints
-parser.add_argument('-c', '--checkpoint', default='/scratch/xiaolonw/pytorch_checkpoints/unsup3dnl_single_contrast', type=str, metavar='PATH',
+parser.add_argument('-c', '--checkpoint', default='./pytorch_checkpoints/unsup3dnl_single_contrast', type=str, metavar='PATH',
                     help='path to save checkpoint (default: checkpoint)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
@@ -94,7 +96,7 @@ parser.add_argument('--pretrained', default='', type=str, metavar='PATH',
 parser.add_argument('--gpu-id', default='0,1,2,3', type=str,
                     help='id(s) for CUDA_VISIBLE_DEVICES')
 parser.add_argument('--seperate2d', type=int, default=0, help='manual seed')
-parser.add_argument('--batchSize', default=1, type=int,
+parser.add_argument('-bs', '--batchSize', default=1, type=int,
                     help='batchSize')
 parser.add_argument('--T', default=1.0, type=float,
                     help='temperature')
@@ -154,7 +156,7 @@ params['sideEdge'] = state['cropSize2']
 
 # Use CUDA
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu_id
-use_cuda = torch.cuda.is_available()
+use_cuda = False#torch.cuda.is_available()
 
 print(args.gpu_id)
 
@@ -186,13 +188,13 @@ def main():
         mkdir_p(args.checkpoint)
 
     val_loader = torch.utils.data.DataLoader(
-        davis.DavisSet(params, is_train=False),
+        davis.DavisSet(params, is_train=False, task=params['task'], mode=params['mode']),
         batch_size=int(params['batchSize']), shuffle=False,
         num_workers=args.workers, pin_memory=True)
 
 
     model = video3d.CycleTime(class_num=params['classNum'], trans_param_num=3, pretrained=args.pretrained_imagenet, temporal_out=args.temporal_out)
-    model = torch.nn.DataParallel(model).cuda()
+    model = torch.nn.DataParallel(model)#.cuda()
 
     cudnn.benchmark = False
     print('    Total params: %.2fM' % (sum(p.numel() for p in model.parameters())/1000000.0))
@@ -255,7 +257,7 @@ def test(val_loader, model, epoch, use_cuda):
 
         # measure data loading time
         data_time.update(time.time() - end)
-        imgs_total = torch.autograd.Variable(imgs_total.cuda())
+        imgs_total = torch.autograd.Variable(imgs_total)#.cuda())
         # patch2_total = torch.autograd.Variable(patch2_total.cuda())
 
         t00 = time.time()
@@ -366,13 +368,13 @@ def test(val_loader, model, epoch, use_cuda):
             imgs_toprint.append(img_now)
 
             imname  = save_path + str(batch_idx) + '_' + str(t) + '_frame.jpg'
-            scipy.misc.imsave(imname, img_now)
+            cv2.imwrite(imname, img_now)
 
         for t in range(finput_num_ori):
 
             nowlbl = lbls_new[t]
             imname  = save_path + str(batch_idx) + '_' + str(t) + '_label.jpg'
-            scipy.misc.imsave(imname, nowlbl)
+            cv2.imwrite(imname, nowlbl)
 
 
         now_batch_size = 4
@@ -388,8 +390,8 @@ def test(val_loader, model, epoch, use_cuda):
         imgs_tensor = torch.Tensor(now_batch_size, finput_num, 3, params['cropSize'], params['cropSize'])
         target_tensor = torch.Tensor(now_batch_size, 1, 3, params['cropSize'], params['cropSize'])
 
-        imgs_tensor = torch.autograd.Variable(imgs_tensor.cuda())
-        target_tensor = torch.autograd.Variable(target_tensor.cuda())
+        imgs_tensor = torch.autograd.Variable(imgs_tensor)#.cuda())
+        target_tensor = torch.autograd.Variable(target_tensor)#.cuda())
 
 
         t03 = time.time()
@@ -414,8 +416,8 @@ def test(val_loader, model, epoch, use_cuda):
 
                 imgs_tensor[i] = imgs
                 target_tensor[i, 0] = imgs_total[0, iter + i + finput_num_ori]
-
-            corrfeat2_now = model(imgs_tensor, target_tensor)
+            with torch.no_grad():
+                corrfeat2_now = model(imgs_tensor, target_tensor)
             corrfeat2_now = corrfeat2_now.view(now_batch_size, finput_num_ori, corrfeat2_now.size(1), corrfeat2_now.size(2), corrfeat2_now.size(3))
 
             for i in range(now_batch_size2):
@@ -514,8 +516,8 @@ def test(val_loader, model, epoch, use_cuda):
             imname  = save_path + str(batch_idx) + '_' + str(iter + finput_num_ori) + '_label.jpg'
             imname2  = save_path + str(batch_idx) + '_' + str(iter + finput_num_ori) + '_mask.png'
 
-            scipy.misc.imsave(imname, np.uint8(img_with_heatmap))
-            scipy.misc.imsave(imname2, np.uint8(predlbls_val))
+            cv2.imwrite(imname, np.uint8(img_with_heatmap))
+            cv2.imwrite(imname2, np.uint8(predlbls_val))
 
 
 
